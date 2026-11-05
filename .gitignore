@@ -1,0 +1,12 @@
+.env
+.DS_Store
+node_modules
+.cache
+public
+.netlify
+.state
+plan.json
+report*.md
+handled.json
+ignored.json
+*.log
