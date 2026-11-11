@@ -34,6 +34,11 @@ const NEW_CONTENT_WORDS = [
   "pas de replay",
 ]
 const EXTRACT_PATTERN = /\b(extrait|excerpt|snippet)/
+// Matched on the raw title, since the normalized text drops emoji
+const PROMO_EMOJI = "📣"
+// "X présente Y" promotes another podcast, "présenté par" names a sponsor
+const PROMO_PATTERN = /\bpresente (?!par\b)/
+const NON_RERUN_REASONS = ["extract", "promo"]
 const MAX_DURATION_GAP_S = 60
 const MIN_TITLE_SIMILARITY = 0.7
 const MIN_SIMILARITY = 0.5
@@ -67,6 +72,7 @@ const SURE_REASONS = [
   'title "',
   'tag "',
   "extract",
+  "promo",
   "played",
   "removed from the feed",
 ]
@@ -346,7 +352,8 @@ const findRerunTags = (episodes) => {
   const tagged = new Map()
   const reruns = new Map()
   episodes.forEach((episode) => {
-    const isRerun = episode.reason && episode.reason !== "extract"
+    const isRerun =
+      episode.reason && !NON_RERUN_REASONS.includes(episode.reason)
     getTags(episode).forEach((tag) => {
       increment(tagged, tag)
       if (isRerun) increment(reruns, tag)
@@ -363,13 +370,20 @@ const findRerunTags = (episodes) => {
   )
 }
 
+const findNonRerunReason = ({title, titleText}) => {
+  if (EXTRACT_PATTERN.test(titleText)) return "extract"
+  if (title.includes(PROMO_EMOJI) || PROMO_PATTERN.test(titleText))
+    return "promo"
+  return null
+}
+
 const addReruns = (episodes) => {
   const notesRerunWords = findNotesRerunWords(episodes)
   const originals = createOriginals()
   episodes.forEach((episode) => {
-    const isExtract = EXTRACT_PATTERN.test(episode.titleText)
-    const {reason = null, original = null} = isExtract
-      ? {reason: "extract"}
+    const nonRerunReason = findNonRerunReason(episode)
+    const {reason = null, original = null} = nonRerunReason
+      ? {reason: nonRerunReason}
       : findRerunReason(episode, originals, notesRerunWords)
     episode.reason = reason
     episode.original = original

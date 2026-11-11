@@ -4,6 +4,7 @@ import {
   PiArrowUUpLeftBold,
   PiCheckCircleBold,
   PiCopyBold,
+  PiMegaphoneBold,
   PiRepeatBold,
   PiScissorsBold,
   PiTrashBold,
@@ -16,6 +17,7 @@ const getIcon = ({action, reason}) => {
   if (action === "play") return PiCheckCircleBold
   if (action === "unarchive") return PiArrowUUpLeftBold
   if (reason === "extract") return PiScissorsBold
+  if (reason === "promo") return PiMegaphoneBold
   if (reason === "played") return PiArchiveBold
   if (reason === "removed from the feed") return PiTrashBold
   if (reason.startsWith("copy")) return PiCopyBold

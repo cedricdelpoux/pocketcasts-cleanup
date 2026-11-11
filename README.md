@@ -1,14 +1,14 @@
 # pocketcasts-cleanup
 
-Clean up your [Pocket Casts](https://pocketcasts.com) subscriptions every morning: archive reruns, extracts and
-duplicates, and keep played episodes in sync between copies. A notification on your phone tells you what was cleaned
+Clean up your [Pocket Casts](https://pocketcasts.com) subscriptions every morning: archive reruns, extracts,
+promos and duplicates, and keep played episodes in sync between copies. A notification on your phone tells you what was cleaned
 up, and the uncertain changes wait in the app for you to check them.
 
 It uses the private API of the Pocket Casts web player. This API is not documented and may change without notice.
 
 ## What it does
 
-- **Reruns, extracts and duplicates** are archived, even when played. This includes episodes published in another
+- **Reruns, extracts, promos and duplicates** are archived, even when played. This includes episodes published in another
   podcast you follow and episodes removed from their feed.
 - **Played episodes** are archived and stay played.
 - **An episode heard anywhere is played everywhere**, but only on its original version: when you played a rerun or a
@@ -16,7 +16,7 @@ It uses the private API of the Pocket Casts web player. This API is not document
 - **An action is never repeated** on an episode. If it archives an episode you want to keep, unarchive it in Pocket
   Casts and it will stay unarchived.
 
-The sure changes are applied every morning: extracts, reruns with a rerun word or tag in their title, played episodes
+The sure changes are applied every morning: extracts, promos, reruns with a rerun word or tag in their title, played episodes
 and episodes removed from their feed. The uncertain ones, such as a rerun only spotted by its notes or a copy in
 another podcast, are listed in the app. Unchecked changes are skipped for good.
 
@@ -28,7 +28,7 @@ An episode is a rerun of an earlier one when:
 - or its notes contain such a word and share enough words with the earlier episode;
 - or its title is nearly the same as the earlier episode's, with the same duration or similar notes.
 
-An extract has "excerpt" or "snippet" in its title. A title tag such as `[ARCHIVES]` that is mostly used on reruns
+An extract has "excerpt" or "snippet" in its title, and a promo for another podcast has "📣" or "X présente Y". A title tag such as `[ARCHIVES]` that is mostly used on reruns
 marks all its episodes as reruns. Words found in many episodes of a podcast (ads, links, credits) are ignored. The
 word lists cover English and French, and all thresholds are at the top of `netlify/cleanup.mjs`.
 
