@@ -3,15 +3,13 @@ import fs from "node:fs"
 
 import {
   ACTIONS,
-  addHandled,
-  applyPlan,
   filterPlan,
   findPodcasts,
   loadPlan,
   loginFromEnv,
   toFlatPlan,
 } from "../netlify/cleanup.mjs"
-import {addIgnored, runCleanup} from "../netlify/runs.mjs"
+import {addIgnored, applyAndRemember, runCleanup} from "../netlify/runs.mjs"
 import {createScriptStore} from "../netlify/store.mjs"
 
 const PLAN_PATH = "plan.json"
@@ -84,11 +82,7 @@ const apply = async (store, names) => {
     readSavedPlan(),
     ({line, podcast}) => keptLines.has(line) && podcasts.has(podcast),
   )
-  await applyPlan(client, plan)
-  await store.write(
-    "handled",
-    addHandled(await store.read("handled", {}), plan),
-  )
+  await applyAndRemember(client, store, plan)
   console.log(
     `Marked as played: ${plan.play.length}, archived: ${plan.play.length + plan.archive.length}, unarchived: ${plan.unarchive.length}`,
   )

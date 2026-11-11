@@ -23,7 +23,7 @@ const addToLog = async (store, plan) => {
   await store.write("log", [...entries, ...log].slice(0, MAX_LOG_ENTRIES))
 }
 
-const applyAndRemember = async (client, store, plan) => {
+export const applyAndRemember = async (client, store, plan) => {
   await applyPlan(client, plan)
   await store.write(
     "handled",
