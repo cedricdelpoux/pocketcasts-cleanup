@@ -3,17 +3,15 @@ import {applyChoices, runCleanup} from "../runs.mjs"
 import {readSettings, saveSettings} from "../settings.mjs"
 import {createStore} from "../store.mjs"
 
-const LOG_SIZE = 50
+const MAX_SHOWN_LOG_ENTRIES = 50
 
 const readReview = async (store) => ({
   choices: await store.read("choices", []),
-  log: (await store.read("log", [])).slice(0, LOG_SIZE),
+  log: (await store.read("log", [])).slice(0, MAX_SHOWN_LOG_ENTRIES),
   settings: await readSettings(store),
   vapidPublicKey: process.env.VAPID_PUBLIC_KEY,
 })
 
-// GET reads the choices, POST {picked} applies them, POST {run: true} runs
-// the cleanup now and POST {settings} saves the settings
 export default async (request) => {
   if (!isAuthorized(request)) return unauthorized()
 

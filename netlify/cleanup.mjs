@@ -91,37 +91,42 @@ const countShared = (items, otherItems) => {
   return count
 }
 
-const getSimilarity = (words, otherWords) => {
-  if (!words.size || !otherWords.size) return 0
-  const shared = countShared(words, otherWords)
-  return shared / (words.size + otherWords.size - shared)
+const getSimilarity = (shared, words, otherWords) => {
+  const union = words.size + otherWords.size - shared
+  return union ? shared / union : 0
 }
+
+const compareWords = (words, otherWords) =>
+  getSimilarity(countShared(words, otherWords), words, otherWords)
+
+const increment = (counts, key) => counts.set(key, (counts.get(key) || 0) + 1)
+
+const toDay = (published) => published.slice(0, 10)
 
 const toPercent = (share) => `${Math.round(share * 100)}%`
 
 const stripTags = (title) => normalize(title).replace(/\[[^\]]*\]/g, " ")
 
-const findBoilerplate = (texts) => {
+const findBoilerplate = (wordSets) => {
   const counts = new Map()
-  texts.forEach((text) =>
-    text.forEach((item) => counts.set(item, (counts.get(item) || 0) + 1)),
-  )
-  const maxCount = MAX_WORD_FREQUENCY * texts.length
+  wordSets.forEach((words) => words.forEach((word) => increment(counts, word)))
+  const maxCount = MAX_WORD_FREQUENCY * wordSets.length
   return new Set(
-    [...counts].filter(([, count]) => count > maxCount).map(([item]) => item),
+    [...counts].filter(([, count]) => count > maxCount).map(([word]) => word),
   )
 }
 
 const addWords = (episodes) => {
   episodes.forEach((episode) => {
+    const title = stripTags(episode.title)
     episode.titleText = normalize(episode.title)
     episode.notesText = normalize(episode.notes)
     episode.words = new Set([
       ...toWords(episode.title),
       ...toWords(episode.notes),
     ])
-    episode.titleWords = toWords(stripTags(episode.title))
-    episode.titleNumbers = new Set(stripTags(episode.title).match(/\d+/g))
+    episode.titleWords = toWords(title)
+    episode.titleNumbers = new Set(title.match(/\d+/g))
   })
   const boilerplate = findBoilerplate(episodes.map(({words}) => words))
   episodes.forEach((episode) =>
@@ -130,11 +135,11 @@ const addWords = (episodes) => {
 }
 
 const findNotesRerunWords = (episodes) => {
-  const texts = episodes.map(
+  const wordSets = episodes.map(
     ({notesText}) =>
       new Set(NOTES_RERUN_WORDS.filter((word) => notesText.includes(word))),
   )
-  const boilerplate = findBoilerplate(texts)
+  const boilerplate = findBoilerplate(wordSets)
   return NOTES_RERUN_WORDS.filter((word) => !boilerplate.has(word))
 }
 
@@ -177,21 +182,16 @@ const addOriginal = (originals, episode) => {
 const countSharedByPosition = (index, words) => {
   const counts = new Map()
   words.forEach((word) =>
-    (index.get(word) || []).forEach((position) =>
-      counts.set(position, (counts.get(position) || 0) + 1),
-    ),
+    (index.get(word) || []).forEach((position) => increment(counts, position)),
   )
   return counts
 }
 
-const toSimilarity = (shared, words, otherWords) =>
-  shared / (words.size + otherWords.size - shared)
-
 const findOriginal = (episode, originals) => {
-  const day = episode.published.slice(0, 10)
+  const day = toDay(episode.published)
   // Parts and full versions of one story are published the same day: they are not reruns
   const isCandidate = (other) =>
-    other.published.slice(0, 10) < day && !isOtherPart(episode, other)
+    toDay(other.published) < day && !isOtherPart(episode, other)
   const shared = countSharedByPosition(originals.byWord, episode.words)
   const sharedTitle = countSharedByPosition(
     originals.byTitleWord,
@@ -205,12 +205,12 @@ const findOriginal = (episode, originals) => {
     .forEach((position) => {
       const other = originals.episodes[position]
       if (!isCandidate(other)) return
-      const similarity = toSimilarity(
+      const similarity = getSimilarity(
         shared.get(position) || 0,
         episode.words,
         other.words,
       )
-      const titleSimilarity = toSimilarity(
+      const titleSimilarity = getSimilarity(
         sharedTitle.get(position) || 0,
         episode.titleWords,
         other.titleWords,
@@ -263,11 +263,10 @@ const toPlanEntry = (
   episode,
   {reason = null, original = null, shouldUnplay = false, isSure = false} = {},
 ) => {
-  const published = episode.published.slice(0, 10)
+  const published = toDay(episode.published)
   let line = `- ${published} ${episode.title}`
   if (reason) line += ` · ${reason}`
-  if (original)
-    line += ` → ${original.title} (${original.published.slice(0, 10)})`
+  if (original) line += ` → ${original.title} (${toDay(original.published)})`
 
   return {
     podcast: episode.podcast.uuid,
@@ -279,7 +278,7 @@ const toPlanEntry = (
     original: original && {
       uuid: original.uuid,
       title: original.title,
-      published: original.published.slice(0, 10),
+      published: toDay(original.published),
       podcastTitle: original.podcast.title,
     },
     line,
@@ -349,8 +348,8 @@ const findRerunTags = (episodes) => {
   episodes.forEach((episode) => {
     const isRerun = episode.reason && episode.reason !== "extract"
     getTags(episode).forEach((tag) => {
-      tagged.set(tag, (tagged.get(tag) || 0) + 1)
-      if (isRerun) reruns.set(tag, (reruns.get(tag) || 0) + 1)
+      increment(tagged, tag)
+      if (isRerun) increment(reruns, tag)
     })
   })
   return new Set(
@@ -387,12 +386,7 @@ const findCopies = (episodes) => {
   const toSlot = (episode) =>
     Math.floor((episode.duration || 0) / MAX_COPY_DURATION_GAP_S)
   const bySlot = new Map()
-  episodes.forEach((episode) =>
-    bySlot.set(toSlot(episode), [
-      ...(bySlot.get(toSlot(episode)) || []),
-      episode,
-    ]),
-  )
+  episodes.forEach((episode) => addToIndex(bySlot, [toSlot(episode)], episode))
   const copies = []
   episodes.forEach((original) => {
     const slot = toSlot(original)
@@ -411,7 +405,7 @@ const findCopies = (episodes) => {
         isLater &&
         isOtherPodcast &&
         isClose &&
-        getSimilarity(copy.words, original.words) >= MIN_COPY_SIMILARITY
+        compareWords(copy.words, original.words) >= MIN_COPY_SIMILARITY
       )
         copies.push([copy, original])
     })
@@ -426,106 +420,100 @@ const isSamePublisher = (podcast, other) => {
   )
 }
 
-const isRemovedCopy = (gone, episode) => {
-  if (gone.titleWords.size)
+const isRemovedCopy = (removedEpisode, episode) => {
+  const {titleWords, duration} = removedEpisode
+  if (titleWords.size)
     return (
-      countShared(gone.titleWords, episode.titleWords) / gone.titleWords.size >=
+      countShared(titleWords, episode.titleWords) / titleWords.size >=
       MIN_REMOVED_TITLE_SHARE
     )
-  const isSameDuration =
-    gone.duration &&
-    Math.abs((episode.duration || 0) - gone.duration) <=
-      MAX_REMOVED_DURATION_GAP_S
+  const isExactDuration =
+    duration &&
+    Math.abs((episode.duration || 0) - duration) <= MAX_REMOVED_DURATION_GAP_S
   return (
-    Boolean(isSameDuration) && isSamePublisher(episode.podcast, gone.podcast)
+    Boolean(isExactDuration) &&
+    isSamePublisher(episode.podcast, removedEpisode.podcast)
   )
 }
 
 const findRemovedCopies = (removed, episodes) =>
   removed
     .filter(({isPlayed}) => isPlayed)
-    .flatMap((gone) =>
+    .flatMap((removedEpisode) =>
       episodes
         .filter(
           (episode) =>
-            episode.podcast.uuid !== gone.podcast.uuid &&
-            isRemovedCopy(gone, episode),
+            episode.podcast.uuid !== removedEpisode.podcast.uuid &&
+            isRemovedCopy(removedEpisode, episode),
         )
-        .map((episode) => [gone, episode]),
+        .map((episode) => [removedEpisode, episode]),
     )
 
 const isSameStory = (episode, other) =>
   Boolean(other) &&
-  (getSimilarity(episode.titleWords, other.titleWords) >=
-    MIN_TITLE_SIMILARITY ||
-    getSimilarity(episode.words, other.words) >= MIN_SIMILARITY)
+  (compareWords(episode.titleWords, other.titleWords) >= MIN_TITLE_SIMILARITY ||
+    compareWords(episode.words, other.words) >= MIN_SIMILARITY)
 
 const findOriginals = (episodes) => {
   const originals = new Map(
     episodes
       .filter((episode) => isSameStory(episode, episode.original))
-      .map((episode) => [episode.uuid, episode.original]),
+      .map((episode) => [episode, episode.original]),
   )
   findCopies(episodes).forEach(([copy, original]) =>
-    originals.set(copy.uuid, original),
+    originals.set(copy, original),
   )
   return originals
 }
 
 const findPlayedCopies = (episodes, removed, originalsByCopy) => {
-  const episodesByUuid = new Map(
-    episodes.map((episode) => [episode.uuid, episode]),
-  )
-  const pairs = [
-    ...[...originalsByCopy].map(([uuid, original]) => [
-      episodesByUuid.get(uuid),
-      original,
-    ]),
-    ...findRemovedCopies(removed, episodes),
-  ]
+  const pairs = [...originalsByCopy, ...findRemovedCopies(removed, episodes)]
   const playedCopies = new Map()
   pairs.forEach(([copy, original]) => {
-    if (
-      copy.isPlayed &&
-      !original.isPlayed &&
-      !originalsByCopy.has(original.uuid)
-    )
-      playedCopies.set(original.uuid, copy)
+    if (copy.isPlayed && !original.isPlayed && !originalsByCopy.has(original))
+      playedCopies.set(original, copy)
   })
   return playedCopies
 }
 
-const isUnheard = (episode, env) => {
-  const {podcast} = episode
-  const neverHeardPodcasts = (env.NEVER_HEARD_PODCASTS || "")
+const findNeverHeardPodcasts = (env) =>
+  (env.NEVER_HEARD_PODCASTS || "")
     .split(",")
     .map((name) => normalize(name).trim())
     .filter(Boolean)
-  if (
-    neverHeardPodcasts.some((name) => normalize(podcast.title).includes(name))
-  )
+
+const isUnheard = (episode, env, neverHeardPodcasts) => {
+  const {podcast} = episode
+  const podcastTitle = normalize(podcast.title)
+  if (neverHeardPodcasts.some((name) => podcastTitle.includes(name)))
     return true
   // Episodes published before subscribing, or while another app was in use, may have been heard there
   const since = [podcast.dateAdded, env.PREVIOUS_APP_UNTIL || ""].sort().pop()
   return episode.published >= since
 }
 
-const createPodcastPlan = () => ({play: [], archive: [], unarchive: []})
+export const mapActions = (map) =>
+  Object.fromEntries(ACTIONS.map((action) => [action, map(action)]))
 
 const buildPlan = (episodes, removed, {ignored, env, shouldUnarchive}) => {
   const originalsByCopy = findOriginals(episodes)
   const playedCopies = findPlayedCopies(episodes, removed, originalsByCopy)
+  const neverHeardPodcasts = findNeverHeardPodcasts(env)
   const plan = new Map()
   const getPodcastPlan = (podcast) => {
-    if (!plan.has(podcast.title)) plan.set(podcast.title, createPodcastPlan())
+    if (!plan.has(podcast.title))
+      plan.set(
+        podcast.title,
+        mapActions(() => []),
+      )
     return plan.get(podcast.title)
   }
 
   episodes.forEach((episode) => {
     if (ignored.has(episode.uuid)) return
     const podcastPlan = getPodcastPlan(episode.podcast)
-    const playedCopy = playedCopies.get(episode.uuid)
-    const original = originalsByCopy.get(episode.uuid)
+    const playedCopy = playedCopies.get(episode)
+    const original = originalsByCopy.get(episode)
     const isCopy = Boolean(episode.reason || original)
     // Only the original keeps the played status, so a played rerun hands it over
     const shouldUnplay = episode.isPlayed && Boolean(original)
@@ -560,16 +548,19 @@ const buildPlan = (episodes, removed, {ignored, env, shouldUnarchive}) => {
       !isCopy &&
       episode.isArchived &&
       !episode.isStarted &&
-      isUnheard(episode, env)
+      isUnheard(episode, env, neverHeardPodcasts)
     ) {
       podcastPlan.unarchive.push(toPlanEntry(episode))
     }
   })
 
-  removed.forEach((gone) => {
-    if (ignored.has(gone.uuid) || gone.isArchived) return
-    getPodcastPlan(gone.podcast).archive.push(
-      toPlanEntry(gone, {reason: "removed from the feed", isSure: true}),
+  removed.forEach((removedEpisode) => {
+    if (ignored.has(removedEpisode.uuid) || removedEpisode.isArchived) return
+    getPodcastPlan(removedEpisode.podcast).archive.push(
+      toPlanEntry(removedEpisode, {
+        reason: "removed from the feed",
+        isSure: true,
+      }),
     )
   })
   return plan
@@ -588,16 +579,6 @@ const mapWithLimit = async (items, limit, map) => {
   return results
 }
 
-const removeHandled = (podcastPlan, handled) =>
-  Object.fromEntries(
-    ACTIONS.map((action) => [
-      action,
-      podcastPlan[action].filter(
-        ({uuid}) => !(handled[uuid] || []).includes(action),
-      ),
-    ]),
-  )
-
 export const findPodcasts = async (client, names = []) => {
   const podcasts = await client.getPodcasts()
   return podcasts.filter(
@@ -610,7 +591,6 @@ export const findPodcasts = async (client, names = []) => {
 export const loginFromEnv = (env) =>
   login(env.POCKETCASTS_EMAIL, env.POCKETCASTS_PASSWORD)
 
-// The plan of each podcast, by podcast title
 export const loadPlan = async (
   client,
   env,
@@ -633,22 +613,22 @@ export const loadPlan = async (
   return new Map(
     [...plan].map(([title, podcastPlan]) => [
       title,
-      removeHandled(podcastPlan, handled),
+      filterPlan(
+        podcastPlan,
+        ({uuid}, action) => !(handled[uuid] || []).includes(action),
+      ),
     ]),
   )
 }
 
 export const toFlatPlan = (planByPodcast) =>
-  Object.fromEntries(
-    ACTIONS.map((action) => [
-      action,
-      [...planByPodcast.values()].flatMap((podcastPlan) => podcastPlan[action]),
-    ]),
+  mapActions((action) =>
+    [...planByPodcast.values()].flatMap((podcastPlan) => podcastPlan[action]),
   )
 
 export const filterPlan = (plan, isKept) =>
-  Object.fromEntries(
-    ACTIONS.map((action) => [action, (plan[action] || []).filter(isKept)]),
+  mapActions((action) =>
+    (plan[action] || []).filter((entry) => isKept(entry, action)),
   )
 
 export const countPlan = (plan) =>

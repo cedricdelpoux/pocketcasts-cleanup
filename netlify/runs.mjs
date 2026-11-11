@@ -7,6 +7,7 @@ import {
   groupChoices,
   loadPlan,
   loginFromEnv,
+  mapActions,
   toFlatPlan,
 } from "./cleanup.mjs"
 
@@ -31,6 +32,13 @@ const applyAndRemember = async (client, store, plan) => {
   await addToLog(store, plan)
 }
 
+export const addIgnored = async (store, uuids) => {
+  const ignored = await store.read("ignored", [])
+  const nextIgnored = [...new Set([...ignored, ...uuids])]
+  await store.write("ignored", nextIgnored)
+  return nextIgnored
+}
+
 // Applies the sure changes and keeps the uncertain ones as choices
 export const runCleanup = async (store, env) => {
   const client = await loginFromEnv(env)
@@ -43,7 +51,7 @@ export const runCleanup = async (store, env) => {
   await applyAndRemember(client, store, sure)
   const choices = groupChoices(filterPlan(plan, ({isSure}) => !isSure))
   await store.write("choices", choices)
-  return {doneCount: countPlan(sure), sure, choices}
+  return {doneCount: countPlan(sure), choices}
 }
 
 // The choices left unpicked are never offered again
@@ -53,17 +61,13 @@ export const applyChoices = async (store, env, pickedIds) => {
   const actions = choices
     .filter(({id}) => picked.has(id))
     .flatMap((choice) => choice.actions)
-  const plan = Object.fromEntries(
-    ACTIONS.map((action) => [
-      action,
-      actions.filter((item) => item.action === action).map(({entry}) => entry),
-    ]),
+  const plan = mapActions((action) =>
+    actions.filter((item) => item.action === action).map(({entry}) => entry),
   )
   await applyAndRemember(await loginFromEnv(env), store, plan)
   const skipped = choices
     .filter(({id}) => !picked.has(id))
     .flatMap(({actions}) => actions.map(({entry}) => entry.uuid))
-  const ignored = await store.read("ignored", [])
-  await store.write("ignored", [...new Set([...ignored, ...skipped])])
+  await addIgnored(store, skipped)
   await store.write("choices", [])
 }

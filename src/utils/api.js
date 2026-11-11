@@ -1,8 +1,3 @@
-const toHeaders = (password) => ({
-  authorization: `Bearer ${password}`,
-  "content-type": "application/json",
-})
-
 export class UnauthorizedError extends Error {}
 
 const fetchApi = async (
@@ -13,7 +8,10 @@ const fetchApi = async (
 ) => {
   const response = await fetch(path, {
     method,
-    headers: toHeaders(password),
+    headers: {
+      authorization: `Bearer ${password}`,
+      "content-type": "application/json",
+    },
     body: body && JSON.stringify(body),
   })
 

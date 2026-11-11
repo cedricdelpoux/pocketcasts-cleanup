@@ -11,7 +11,7 @@ const ellipsisStyle = {
 }
 
 export const EpisodeRow = ({
-  Icon,
+  icon: Icon,
   label,
   title,
   subtitle,

@@ -12,7 +12,6 @@ import {
 import {useColors} from "./colors-context"
 import {ICON_SIZE, IconButton} from "./icon-button"
 
-const TOGGLE_ICON_SIZE = 20
 const HOURS = Array.from({length: 24}, (_, hour) => hour)
 
 // Kept for the keyboard and screen readers, the icon shows the value
@@ -35,7 +34,7 @@ const rowStyle = {
 const IconInput = ({icon: Icon, label, ...inputProps}) => (
   <label style={rowStyle}>
     <input {...inputProps} style={hiddenInputStyle} />
-    <Icon size={TOGGLE_ICON_SIZE} color={useColors().muted} />
+    <Icon size={ICON_SIZE} color={useColors().muted} />
     {label}
   </label>
 )
@@ -115,7 +114,7 @@ const MenuAction = ({icon: Icon, label, iconStyle, ...buttonProps}) => {
       }}
       {...buttonProps}
     >
-      <Icon size={TOGGLE_ICON_SIZE} color={colors.muted} style={iconStyle} />
+      <Icon size={ICON_SIZE} color={colors.muted} style={iconStyle} />
       {label}
     </button>
   )
@@ -179,7 +178,7 @@ export const SettingsMenu = ({
               onChange={(isOn) => onSettingsChange({isPaused: !isOn})}
             />
             <label style={{...rowStyle, cursor: "default"}}>
-              <span style={{width: TOGGLE_ICON_SIZE}} />
+              <span style={{width: ICON_SIZE}} />
               At
               <select
                 value={settings.hour}

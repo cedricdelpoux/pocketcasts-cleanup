@@ -3,7 +3,7 @@ import {PiCopyBold, PiHeadphonesBold, PiRepeatBold} from "react-icons/pi"
 
 import {EpisodeRow} from "./episode-row"
 
-const describeOriginal = ({title, published, podcastTitle}) =>
+export const describeOriginal = ({title, published, podcastTitle}) =>
   `“${title}” (${podcastTitle}, ${published})`
 
 const describeChoice = ({actions}) => {
@@ -42,7 +42,7 @@ export const ChoiceItem = ({choice, isChecked, onCheck}) => {
 
   return (
     <EpisodeRow
-      Icon={Icon}
+      icon={Icon}
       label={label}
       title={entry.title}
       subtitle={`${entry.podcastTitle} · ${entry.published}`}

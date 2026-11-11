@@ -31,7 +31,6 @@ const localStore = {
 export const createStore = () =>
   toJsonStore(getStore({name: STORE_NAME, consistency: "strong"}))
 
-// Without a Netlify site, the scripts keep their state in `.state`
 export const createScriptStore = ({NETLIFY_SITE_ID, NETLIFY_AUTH_TOKEN}) =>
   NETLIFY_SITE_ID && NETLIFY_AUTH_TOKEN
     ? toJsonStore(

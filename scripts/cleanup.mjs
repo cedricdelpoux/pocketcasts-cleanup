@@ -3,14 +3,15 @@ import fs from "node:fs"
 
 import {
   ACTIONS,
-  applyPlan,
   addHandled,
+  applyPlan,
+  filterPlan,
   findPodcasts,
   loadPlan,
   loginFromEnv,
   toFlatPlan,
 } from "../netlify/cleanup.mjs"
-import {runCleanup} from "../netlify/runs.mjs"
+import {addIgnored, runCleanup} from "../netlify/runs.mjs"
 import {createScriptStore} from "../netlify/store.mjs"
 
 const PLAN_PATH = "plan.json"
@@ -24,18 +25,18 @@ const ACTION_LABELS = {
 const readReportLines = () =>
   new Set(fs.readFileSync(REPORT_PATH, "utf8").split("\n"))
 
+const readSavedPlan = () => JSON.parse(fs.readFileSync(PLAN_PATH, "utf8"))
+
 // The lines deleted from the last report are never offered again
-const addDeletedLines = async (store) => {
-  const ignored = await store.read("ignored", [])
-  if (!fs.existsSync(PLAN_PATH) || !fs.existsSync(REPORT_PATH)) return ignored
+const ignoreDeletedLines = async (store) => {
+  if (!fs.existsSync(PLAN_PATH) || !fs.existsSync(REPORT_PATH))
+    return store.read("ignored", [])
   const keptLines = readReportLines()
-  const plan = JSON.parse(fs.readFileSync(PLAN_PATH, "utf8"))
+  const plan = readSavedPlan()
   const deleted = ACTIONS.flatMap((action) => plan[action])
     .filter(({line}) => !keptLines.has(line))
     .map(({uuid}) => uuid)
-  const nextIgnored = [...new Set([...ignored, ...deleted])]
-  await store.write("ignored", nextIgnored)
-  return nextIgnored
+  return addIgnored(store, deleted)
 }
 
 const toReportSection = (title, podcastPlan) => [
@@ -48,7 +49,7 @@ const toReportSection = (title, podcastPlan) => [
 ]
 
 const report = async (store, names, shouldUnarchive) => {
-  const ignored = await addDeletedLines(store)
+  const ignored = await ignoreDeletedLines(store)
   const handled = await store.read("handled", {})
   const client = await loginFromEnv(process.env)
   const planByPodcast = await loadPlan(client, process.env, {
@@ -79,14 +80,9 @@ const apply = async (store, names) => {
   const podcasts = new Set(
     (await findPodcasts(client, names)).map(({uuid}) => uuid),
   )
-  const savedPlan = JSON.parse(fs.readFileSync(PLAN_PATH, "utf8"))
-  const plan = Object.fromEntries(
-    ACTIONS.map((action) => [
-      action,
-      savedPlan[action].filter(
-        ({line, podcast}) => keptLines.has(line) && podcasts.has(podcast),
-      ),
-    ]),
+  const plan = filterPlan(
+    readSavedPlan(),
+    ({line, podcast}) => keptLines.has(line) && podcasts.has(podcast),
   )
   await applyPlan(client, plan)
   await store.write(
