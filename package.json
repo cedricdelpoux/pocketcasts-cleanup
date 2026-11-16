@@ -5,6 +5,7 @@
     "build": "gatsby build",
     "clean": "gatsby clean",
     "dev": "netlify dev",
+    "icons": "rsvg-convert -w 512 src/images/icon.svg -o src/images/icon.png && rsvg-convert -w 96 src/images/badge.svg -o static/badge.png",
     "report": "node scripts/cleanup.mjs report",
     "apply": "node scripts/cleanup.mjs apply",
     "auto": "node scripts/cleanup.mjs auto"

@@ -53,6 +53,12 @@ The app is a [Gatsby](https://www.gatsbyjs.com) site hosted on [Netlify](https:/
 4. On your phone, open the site in Chrome, log in, and add it to the home screen. The settings menu turns on the
    notification and sets the hour of the cleanup.
 
+### Icons
+
+The app icon is drawn in `src/images/icon.svg`, and the notification badge in `src/images/badge.svg`. After changing
+one of them, run `yarn icons` to render `src/images/icon.png` and `static/badge.png` again. The script needs
+`rsvg-convert`, which comes with `brew install librsvg`.
+
 ## Scripts
 
 The scripts run the same cleanup from a terminal. With `NETLIFY_SITE_ID` and `NETLIFY_AUTH_TOKEN` in `.env`, they
