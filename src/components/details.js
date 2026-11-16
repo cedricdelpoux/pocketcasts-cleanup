@@ -47,7 +47,7 @@ export const toReasonDetails = (reason) =>
 
 export const toDetails = ({reason, original}) => {
   // The reason only names the podcast of the played copy, which the original line already shows
-  const isPlayedCopy = Boolean(reason?.startsWith("played in"))
+  const isPlayedCopy = reason?.startsWith("played in")
   return [
     original && {
       Icon: isPlayedCopy ? PiHeadphonesBold : PiLinkSimpleBold,
