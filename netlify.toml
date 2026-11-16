@@ -2,3 +2,8 @@
   command = "yarn build"
   publish = "public"
   functions = "netlify/functions"
+
+[dev]
+  port = 8103
+  command = "yarn gatsby develop --port 8104"
+  targetPort = 8104
