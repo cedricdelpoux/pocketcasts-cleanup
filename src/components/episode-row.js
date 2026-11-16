@@ -15,7 +15,7 @@ export const EpisodeRow = ({
   label,
   title,
   subtitle,
-  detail,
+  details,
   isChecked,
   onCheck,
 }) => {
@@ -83,29 +83,46 @@ export const EpisodeRow = ({
             </span>
           </span>
         </label>
-        <IconButton
-          label={isOpen ? "Hide the details" : "Show the details"}
-          aria-expanded={isOpen}
-          onClick={() => setIsOpen((open) => !open)}
-          style={{margin: "0 8px"}}
-        >
-          <PiCaretDownBold
-            size={ICON_SIZE}
-            style={{transform: isOpen ? "rotate(180deg)" : undefined}}
-          />
-        </IconButton>
+        {details.length > 0 && (
+          <IconButton
+            label={isOpen ? "Hide the details" : "Show the details"}
+            aria-expanded={isOpen}
+            onClick={() => setIsOpen((open) => !open)}
+            style={{margin: "0 8px"}}
+          >
+            <PiCaretDownBold
+              size={ICON_SIZE}
+              style={{transform: isOpen ? "rotate(180deg)" : undefined}}
+            />
+          </IconButton>
+        )}
       </div>
       {isOpen && (
-        <p
+        <ul
           style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "6px",
             margin: 0,
             padding: `0 16px 14px ${hasCheckbox ? 96 : 64}px`,
+            listStyle: "none",
             fontSize: "14px",
             color: colors.muted,
           }}
         >
-          {detail}
-        </p>
+          {details.map(({Icon, label, value}) => (
+            <li key={label} style={{display: "flex", gap: "8px"}}>
+              <Icon
+                size={16}
+                style={{flexShrink: 0, marginTop: "2px", color: colors.primary}}
+              />
+              <span>
+                {label}
+                {value && <span style={{color: colors.text}}> {value}</span>}
+              </span>
+            </li>
+          ))}
+        </ul>
       )}
     </li>
   )

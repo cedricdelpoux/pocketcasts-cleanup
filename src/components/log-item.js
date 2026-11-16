@@ -10,7 +10,7 @@ import {
   PiTrashBold,
 } from "react-icons/pi"
 
-import {describeOriginal} from "./choice-item"
+import {toDetails} from "./details"
 import {EpisodeRow} from "./episode-row"
 
 const getIcon = ({action, reason}) => {
@@ -39,11 +39,6 @@ export const LogItem = ({entry}) => (
     label={`${ACTION_LABELS[entry.action]} · ${formatDay(entry.date)}`}
     title={entry.title}
     subtitle={`${entry.podcastTitle} · ${entry.published}`}
-    detail={[
-      entry.reason && `Reason: ${entry.reason}.`,
-      entry.original && `Original: ${describeOriginal(entry.original)}.`,
-    ]
-      .filter(Boolean)
-      .join(" ")}
+    details={toDetails(entry)}
   />
 )

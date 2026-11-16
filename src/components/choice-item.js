@@ -1,10 +1,13 @@
 import React from "react"
-import {PiCopyBold, PiHeadphonesBold, PiRepeatBold} from "react-icons/pi"
+import {
+  PiArchiveBold,
+  PiCopyBold,
+  PiHeadphonesBold,
+  PiRepeatBold,
+} from "react-icons/pi"
 
+import {toDetails, toReasonDetails} from "./details"
 import {EpisodeRow} from "./episode-row"
-
-export const describeOriginal = ({title, published, podcastTitle}) =>
-  `“${title}” (${podcastTitle}, ${published})`
 
 const describeChoice = ({actions}) => {
   const played = actions.find(({action}) => action === "play")?.entry
@@ -15,30 +18,31 @@ const describeChoice = ({actions}) => {
       Icon: PiHeadphonesBold,
       label: "Mark the original as played",
       entry: played,
-      detail: `You played the rerun ${describeOriginal(archived)}. The original goes to played, the rerun back to not played, and both are archived.`,
+      details: [
+        ...toDetails(played),
+        ...toReasonDetails(archived.reason),
+        {Icon: PiArchiveBold, label: "Both episodes archived"},
+      ],
     }
   if (played)
     return {
       Icon: PiHeadphonesBold,
       label: "Mark as played",
       entry: played,
-      detail: `You played the same episode in ${describeOriginal(played.original)}.`,
+      details: toDetails(played),
     }
 
   const isCopy = archived.reason.startsWith("copy")
-  const original = archived.original
-    ? `It looks like ${describeOriginal(archived.original)}. `
-    : ""
   return {
     Icon: isCopy ? PiCopyBold : PiRepeatBold,
     label: isCopy ? "Archive the copy" : "Archive the rerun",
     entry: archived,
-    detail: `${original}Clue: ${archived.reason}.`,
+    details: toDetails(archived),
   }
 }
 
 export const ChoiceItem = ({choice, isChecked, onCheck}) => {
-  const {Icon, label, entry, detail} = describeChoice(choice)
+  const {Icon, label, entry, details} = describeChoice(choice)
 
   return (
     <EpisodeRow
@@ -46,7 +50,7 @@ export const ChoiceItem = ({choice, isChecked, onCheck}) => {
       label={label}
       title={entry.title}
       subtitle={`${entry.podcastTitle} · ${entry.published}`}
-      detail={detail}
+      details={details}
       isChecked={isChecked}
       onCheck={onCheck}
     />
